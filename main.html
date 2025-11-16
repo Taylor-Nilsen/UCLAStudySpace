@@ -437,6 +437,11 @@
                 </div>
 
                 <div class="filter-group">
+                    <label for="maxCapacityFilter">👥 Maximum Capacity</label>
+                    <input type="number" id="maxCapacityFilter" placeholder="e.g., 100" min="0">
+                </div>
+
+                <div class="filter-group">
                     <label for="roomSearch">🔍 Search Room</label>
                     <input type="text" id="roomSearch" placeholder="e.g., BOELTER 2444">
                 </div>
@@ -512,6 +517,7 @@
             // Add event listeners for filters that exist in HTML
             document.getElementById('buildingFilter').addEventListener('change', handleFilterChange);
             document.getElementById('capacityFilter').addEventListener('input', handleFilterChange);
+            document.getElementById('maxCapacityFilter').addEventListener('input', handleFilterChange);
             document.getElementById('roomSearch').addEventListener('input', handleFilterChange);
             document.getElementById('startTime').addEventListener('change', handleFilterChange);
             document.getElementById('endTime').addEventListener('change', handleFilterChange);
@@ -617,6 +623,7 @@
         function clearFilters() {
             document.getElementById('buildingFilter').value = '';
             document.getElementById('capacityFilter').value = '';
+            document.getElementById('maxCapacityFilter').value = '';
             document.getElementById('roomSearch').value = '';
             document.getElementById('startTime').value = '';
             document.getElementById('endTime').value = '';
@@ -707,6 +714,7 @@
         function renderResults() {
             const buildingFilter = document.getElementById('buildingFilter').value;
             const capacityFilter = parseInt(document.getElementById('capacityFilter').value) || 0;
+            const maxCapacityFilter = parseInt(document.getElementById('maxCapacityFilter').value) || Infinity;
             const roomSearch = document.getElementById('roomSearch').value.toLowerCase();
             const startTime = document.getElementById('startTime').value;
             const endTime = document.getElementById('endTime').value;
@@ -715,8 +723,9 @@
                 // Building filter
                 if (buildingFilter && room.building !== buildingFilter) return false;
 
-                // Capacity filter
+                // Capacity filters
                 if (capacityFilter && (!room.capacity || room.capacity < capacityFilter)) return false;
+                if (maxCapacityFilter !== Infinity && room.capacity && room.capacity > maxCapacityFilter) return false;
 
                 // Room search
                 if (roomSearch && !room.text.toLowerCase().includes(roomSearch)) return false;
