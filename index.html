@@ -130,7 +130,8 @@
             border: 1px solid #ddd;
             border-radius: 3px;
             padding: 15px;
-            margin-bottom: 15px;
+            margin: 0 auto 15px;
+            max-width: 600px;
         }
 
         .room-card:hover {
@@ -464,7 +465,6 @@
             <div class="filter-group">
                 <label>📅 Day of Week</label>
                 <div class="day-filter">
-                    <button class="day-btn" data-day="">All Days</button>
                     <button class="day-btn" data-day="Monday">Mon</button>
                     <button class="day-btn" data-day="Tuesday">Tue</button>
                     <button class="day-btn" data-day="Wednesday">Wed</button>
@@ -546,8 +546,7 @@
                 });
             });
 
-            // Set default day to All Days
-            document.querySelector('.day-btn[data-day=""]').classList.add('active');
+            // No default "All Days" button present — leave no day selected by default
 
             // Load JSON data
             // Set dynamic footer year
@@ -649,7 +648,7 @@
             selectedCharacteristics.clear();
             
             document.querySelectorAll('.day-btn').forEach(b => b.classList.remove('active'));
-            document.querySelector('.day-btn[data-day=""]').classList.add('active');
+            // no default active day after clearing filters
             
             document.querySelectorAll('#characteristicsFilter input[type="checkbox"]').forEach(cb => {
                 cb.checked = false;
