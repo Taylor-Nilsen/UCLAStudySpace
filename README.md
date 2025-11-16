@@ -54,13 +54,6 @@ The frontend is intentionally simple: a single static HTML file reads `classroom
 
 Browsers block fetch() on `file://` origins. Serve the repo directory over HTTP.
 
-Python 3 built-in server:
-
-```bash
-python3 -m http.server 8000
-# Open http://localhost:8000/index.html
-```
-
 Or use VS Code Live Server to preview `index.html`.
 
 ## Updating the scraped data
