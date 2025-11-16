@@ -12,17 +12,45 @@ Output: Creates classrooms.json with building, room, and url fields for each cla
 
 import json
 
-def generate_urls(classroom_list):
+def normalize_room_number(room):
+    """Normalize room number by removing leading zeros and trailing spaces for comparison."""
+    # Remove trailing spaces
+    room = room.strip()
+    # For alphanumeric rooms (like "A152", "CS24"), keep as is
+    # For numeric rooms (like "02444"), remove leading zeros but keep letters
+    if room and not room[0].isalpha():
+        # Remove leading zeros from the beginning
+        room = room.lstrip('0') or '0'
+    return room
+
+def generate_urls(classroom_list, offered_rooms=None, building_name_map=None):
     """
     Function to generate URLs for each classroom based on building and room.
     URL format: https://sa.ucla.edu/ro/Public/SOC/Results/ClassroomDetail?term=25F&classroom={encoded_value}
     
     Args:
         classroom_list: List of classroom dictionaries with 'text' and 'value' keys
+        offered_rooms: List of offered rooms with capacity and type info
+        building_name_map: Dictionary mapping full building names to abbreviated codes
         
     Returns:
-        List of classroom dictionaries with 'building', 'room', and 'url' keys added
+        List of classroom dictionaries with 'building', 'room', 'url', 'offered', 'capacity', and 'type' keys
     """
+    # Create a lookup dictionary for offered rooms (using abbreviated building names and normalized room numbers)
+    offered_lookup = {}
+    if offered_rooms and building_name_map:
+        for room in offered_rooms:
+            # Convert full building name to abbreviated code
+            building_abbr = building_name_map.get(room['building'], room['building'])
+            # Normalize the room number for comparison
+            normalized_room = normalize_room_number(room['room'])
+            # Create a key using building and normalized room for quick lookup
+            key = f"{building_abbr}|{normalized_room}"
+            offered_lookup[key] = {
+                'capacity': room['capacity'],
+                'type': room['type']
+            }
+    
     for classroom in classroom_list:
         value = classroom['value']
         # Parse building and room
@@ -32,9 +60,21 @@ def generate_urls(classroom_list):
             room = parts[1].strip()
             classroom['building'] = building
             classroom['room'] = room
+            
+            # Check if this classroom is in offered_rooms (using normalized room number)
+            normalized_room = normalize_room_number(room)
+            lookup_key = f"{building}|{normalized_room}"
+            if lookup_key in offered_lookup:
+                classroom['offered'] = True
+                classroom['capacity'] = offered_lookup[lookup_key]['capacity']
+                classroom['type'] = offered_lookup[lookup_key]['type']
+            else:
+                classroom['offered'] = False
         else:
             classroom['building'] = None
             classroom['room'] = None
+            classroom['offered'] = False
+            
         # Encode the value: replace | with %7C and spaces with +
         encoded_classroom = value.replace('|', '%7C').replace(' ', '+')
         url = f"https://sa.ucla.edu/ro/Public/SOC/Results/ClassroomDetail?term=25F&classroom={encoded_classroom}"
@@ -46,6 +86,32 @@ def generate_urls(classroom_list):
 
 def main():
     """Main function to generate URLs from classroom data"""
+    
+    # Building name mapping: Full names to abbreviated codes
+    building_name_map = {
+        "Boelter Hall": "BOELTER",
+        "Broad Art Center": "BROAD",
+        "Bunche Hall": "BUNCHE",
+        "Dodd Hall": "DODD",
+        "Fowler Museum": "FOWLER",
+        "Franz Hall": "FRANZ",
+        "Geology Building": "GEOLOGY",
+        "Haines Hall": "HAINES",
+        "Kaplan Hall": "KAPLAN",
+        "Kaufman Hall": "KAUFMAN",
+        "Kinsey Pavilion": "KNSY PV",
+        "La Kretz Hall": "LAKRETZ",
+        "Mathematical Sciences": "MS",
+        "Moore Hall": "MOORE",
+        "Perloff Hall": "PERLOFF",
+        "Physics and Astronomy Building": "PAB",
+        "Public Affairs Building": "PUB AFF",
+        "Rolfe Hall": "ROLFE",
+        "Royce Hall": "ROYCE",
+        "Slichter": "SLICHTR",
+        "Young Hall": "WGYOUNG"
+    }
+    
     # The classroom options data as a list of dictionaries
     classroom_options = [
     {"text": "700 WWP  1440", "value": "700 WWP |  01440  "},
@@ -1158,11 +1224,203 @@ def main():
     {"text": "YRL      23167", "value": "YRL     |  23167  "},
     {"text": "YRL      A1713A", "value": "YRL     | A01713A "},
     ]
-    
+
+    offered_rooms_25F = [
+        {"building": "Boelter Hall", "room": "2444", "capacity": 80, "type": "Classroom"},
+        {"building": "Boelter Hall", "room": "2760", "capacity": 72, "type": "Classroom"},
+        {"building": "Boelter Hall", "room": "3400", "capacity": 174, "type": "Classroom"},
+        {"building": "Boelter Hall", "room": "4283", "capacity": 30, "type": "Classroom"},
+        {"building": "Boelter Hall", "room": "4413", "capacity": 30, "type": "Classroom"},
+        {"building": "Boelter Hall", "room": "5249", "capacity": 92, "type": "Classroom"},
+        {"building": "Boelter Hall", "room": "5252", "capacity": 34, "type": "Classroom"},
+        {"building": "Boelter Hall", "room": "5264", "capacity": 48, "type": "Classroom"},
+        {"building": "Boelter Hall", "room": "5272", "capacity": 39, "type": "Classroom"},
+        {"building": "Boelter Hall", "room": "5273", "capacity": 41, "type": "Classroom"},
+        {"building": "Boelter Hall", "room": "5280", "capacity": 40, "type": "Classroom"},
+        {"building": "Boelter Hall", "room": "5419", "capacity": 40, "type": "Classroom"},
+        {"building": "Boelter Hall", "room": "5420", "capacity": 40, "type": "Classroom"},
+        {"building": "Boelter Hall", "room": "5422", "capacity": 40, "type": "Classroom"},
+        {"building": "Boelter Hall", "room": "5436", "capacity": 49, "type": "Classroom"},
+        {"building": "Boelter Hall", "room": "5440", "capacity": 44, "type": "Classroom"},
+        {"building": "Boelter Hall", "room": "5514", "capacity": 14, "type": "Seminar Room"},
+        {"building": "Boelter Hall", "room": "9436", "capacity": 47, "type": "Classroom"},
+        {"building": "Broad Art Center", "room": "2100A", "capacity": 83, "type": "Classroom"},
+        {"building": "Broad Art Center", "room": "2160E", "capacity": 406, "type": "Auditorium"},
+        {"building": "Bunche Hall", "room": "1209B", "capacity": 221, "type": "Classroom"},
+        {"building": "Bunche Hall", "room": "1221A", "capacity": 34, "type": "Classroom"},
+        {"building": "Bunche Hall", "room": "1265", "capacity": 16, "type": "Seminar Room"},
+        {"building": "Bunche Hall", "room": "2121", "capacity": 16, "type": "Seminar Room"},
+        {"building": "Bunche Hall", "room": "2150", "capacity": 16, "type": "Seminar Room"},
+        {"building": "Bunche Hall", "room": "2156", "capacity": 28, "type": "Classroom"},
+        {"building": "Bunche Hall", "room": "2160", "capacity": 40, "type": "Classroom"},
+        {"building": "Bunche Hall", "room": "2168", "capacity": 28, "type": "Classroom"},
+        {"building": "Bunche Hall", "room": "2173", "capacity": 16, "type": "Seminar Room"},
+        {"building": "Bunche Hall", "room": "2174", "capacity": 16, "type": "Seminar Room"},
+        {"building": "Bunche Hall", "room": "2178", "capacity": 38, "type": "Classroom"},
+        {"building": "Bunche Hall", "room": "2181", "capacity": 26, "type": "Classroom"},
+        {"building": "Bunche Hall", "room": "2209A", "capacity": 221, "type": "Classroom"},
+        {"building": "Bunche Hall", "room": "3117", "capacity": 27, "type": "Classroom"},
+        {"building": "Bunche Hall", "room": "3123", "capacity": 26, "type": "Classroom"},
+        {"building": "Bunche Hall", "room": "3143", "capacity": 37, "type": "Classroom"},
+        {"building": "Bunche Hall", "room": "3150", "capacity": 36, "type": "Classroom"},
+        {"building": "Bunche Hall", "room": "3153", "capacity": 36, "type": "Classroom"},
+        {"building": "Bunche Hall", "room": "3156", "capacity": 40, "type": "Classroom"},
+        {"building": "Bunche Hall", "room": "3157", "capacity": 41, "type": "Classroom"},
+        {"building": "Bunche Hall", "room": "3164", "capacity": 40, "type": "Classroom"},
+        {"building": "Bunche Hall", "room": "3170", "capacity": 40, "type": "Classroom"},
+        {"building": "Bunche Hall", "room": "3178", "capacity": 44, "type": "Classroom"},
+        {"building": "Bunche Hall", "room": "3211", "capacity": 45, "type": "Classroom"},
+        {"building": "Bunche Hall", "room": "A152", "capacity": 25, "type": "Seminar Room"},
+        {"building": "Dodd Hall", "room": "121", "capacity": 158, "type": "Auditorium"},
+        {"building": "Dodd Hall", "room": "146", "capacity": 89, "type": "Classroom"},
+        {"building": "Dodd Hall", "room": "147", "capacity": 366, "type": "Auditorium"},
+        {"building": "Dodd Hall", "room": "154", "capacity": 34, "type": "Classroom"},
+        {"building": "Dodd Hall", "room": "161", "capacity": 106, "type": "Classroom"},
+        {"building": "Dodd Hall", "room": "162", "capacity": 32, "type": "Classroom"},
+        {"building": "Dodd Hall", "room": "167", "capacity": 58, "type": "Classroom"},
+        {"building": "Dodd Hall", "room": "170", "capacity": 62, "type": "Classroom"},
+        {"building": "Dodd Hall", "room": "175", "capacity": 98, "type": "Classroom"},
+        {"building": "Dodd Hall", "room": "178", "capacity": 32, "type": "Classroom"},
+        {"building": "Dodd Hall", "room": "78", "capacity": 50, "type": "Classroom"},
+        {"building": "Fowler Museum", "room": "A103B", "capacity": 320, "type": "Auditorium"},
+        {"building": "Fowler Museum", "room": "A139", "capacity": 104, "type": "Classroom"},
+        {"building": "Franz Hall", "room": "1178", "capacity": 296, "type": "Auditorium"},
+        {"building": "Franz Hall", "room": "1260", "capacity": 147, "type": "Auditorium"},
+        {"building": "Franz Hall", "room": "2258A", "capacity": 82, "type": "Auditorium"},
+        {"building": "Franz Hall", "room": "2288", "capacity": 30, "type": "Seminar Room"},
+        {"building": "Geology Building", "room": "3656", "capacity": 81, "type": "Classroom"},
+        {"building": "Geology Building", "room": "4645", "capacity": 48, "type": "Classroom"},
+        {"building": "Geology Building", "room": "4660", "capacity": 70, "type": "Classroom"},
+        {"building": "Geology Building", "room": "6704", "capacity": 47, "type": "Classroom"},
+        {"building": "Haines Hall", "room": "110", "capacity": 20, "type": "Seminar Room"},
+        {"building": "Haines Hall", "room": "118", "capacity": 122, "type": "Classroom"},
+        {"building": "Haines Hall", "room": "122", "capacity": 20, "type": "Seminar Room"},
+        {"building": "Haines Hall", "room": "220", "capacity": 122, "type": "Classroom"},
+        {"building": "Haines Hall", "room": "39", "capacity": 419, "type": "Auditorium"},
+        {"building": "Haines Hall", "room": "A18", "capacity": 140, "type": "Classroom"},
+        {"building": "Haines Hall", "room": "A2", "capacity": 138, "type": "Classroom"},
+        {"building": "Haines Hall", "room": "A20", "capacity": 26, "type": "Seminar Room"},
+        {"building": "Haines Hall", "room": "A24", "capacity": 28, "type": "Classroom"},
+        {"building": "Haines Hall", "room": "A25", "capacity": 73, "type": "Classroom"},
+        {"building": "Haines Hall", "room": "A28", "capacity": 24, "type": "Seminar Room"},
+        {"building": "Haines Hall", "room": "A44", "capacity": 40, "type": "Classroom"},
+        {"building": "Haines Hall", "room": "A6", "capacity": 20, "type": "Seminar Room"},
+        {"building": "Haines Hall", "room": "A74", "capacity": 26, "type": "Classroom"},
+        {"building": "Haines Hall", "room": "A76", "capacity": 24, "type": "Classroom"},
+        {"building": "Haines Hall", "room": "A78", "capacity": 20, "type": "Seminar Room"},
+        {"building": "Haines Hall", "room": "A82", "capacity": 24, "type": "Classroom"},
+        {"building": "Kaplan Hall", "room": "135", "capacity": 115, "type": "Classroom"},
+        {"building": "Kaplan Hall", "room": "169", "capacity": 115, "type": "Classroom"},
+        {"building": "Kaplan Hall", "room": "A26", "capacity": 32, "type": "Seminar Room"},
+        {"building": "Kaplan Hall", "room": "A30", "capacity": 16, "type": "Seminar Room"},
+        {"building": "Kaplan Hall", "room": "A32", "capacity": 24, "type": "Seminar Room"},
+        {"building": "Kaplan Hall", "room": "A40", "capacity": 20, "type": "Seminar Room"},
+        {"building": "Kaplan Hall", "room": "A46", "capacity": 24, "type": "Seminar Room"},
+        {"building": "Kaplan Hall", "room": "A48", "capacity": 24, "type": "Seminar Room"},
+        {"building": "Kaplan Hall", "room": "A51", "capacity": 290, "type": "Auditorium"},
+        {"building": "Kaplan Hall", "room": "A56", "capacity": 20, "type": "Seminar Room"},
+        {"building": "Kaplan Hall", "room": "A60", "capacity": 20, "type": "Seminar Room"},
+        {"building": "Kaplan Hall", "room": "A65", "capacity": 115, "type": "Classroom"},
+        {"building": "Kaplan Hall", "room": "A66", "capacity": 24, "type": "Seminar Room"},
+        {"building": "Kaplan Hall", "room": "A68", "capacity": 24, "type": "Seminar Room"},
+        {"building": "Kaufman Hall", "room": "101", "capacity": 52, "type": "Classroom"},
+        {"building": "Kaufman Hall", "room": "136", "capacity": 12, "type": "Seminar Room"},
+        {"building": "Kaufman Hall", "room": "153", "capacity": 26, "type": "Classroom"},
+        {"building": "Kinsey Pavilion", "room": "1200B", "capacity": 122, "type": "Auditorium"},
+        {"building": "Kinsey Pavilion", "room": "1220B", "capacity": 178, "type": "Auditorium"},
+        {"building": "Kinsey Pavilion", "room": "1240B", "capacity": 122, "type": "Auditorium"},
+        {"building": "La Kretz Hall", "room": "100", "capacity": 22, "type": "Seminar Room"},
+        {"building": "La Kretz Hall", "room": "101", "capacity": 22, "type": "Seminar Room"},
+        {"building": "La Kretz Hall", "room": "110", "capacity": 352, "type": "Auditorium"},
+        {"building": "La Kretz Hall", "room": "120", "capacity": 46, "type": "Classroom"},
+        {"building": "Mathematical Sciences", "room": "3915A", "capacity": 24, "type": "Seminar Room"},
+        {"building": "Mathematical Sciences", "room": "3915D", "capacity": 24, "type": "Seminar Room"},
+        {"building": "Mathematical Sciences", "room": "3915G", "capacity": 24, "type": "Seminar Room"},
+        {"building": "Mathematical Sciences", "room": "3915H", "capacity": 24, "type": "Seminar Room"},
+        {"building": "Mathematical Sciences", "room": "4000A", "capacity": 210, "type": "Auditorium"},
+        {"building": "Mathematical Sciences", "room": "5117", "capacity": 40, "type": "Classroom"},
+        {"building": "Mathematical Sciences", "room": "5118", "capacity": 40, "type": "Classroom"},
+        {"building": "Mathematical Sciences", "room": "5127", "capacity": 40, "type": "Classroom"},
+        {"building": "Mathematical Sciences", "room": "5128", "capacity": 40, "type": "Classroom"},
+        {"building": "Mathematical Sciences", "room": "5137", "capacity": 40, "type": "Classroom"},
+        {"building": "Mathematical Sciences", "room": "5138", "capacity": 40, "type": "Classroom"},
+        {"building": "Mathematical Sciences", "room": "5147", "capacity": 39, "type": "Classroom"},
+        {"building": "Mathematical Sciences", "room": "5148", "capacity": 26, "type": "Classroom"},
+        {"building": "Mathematical Sciences", "room": "5200", "capacity": 130, "type": "Auditorium"},
+        {"building": "Mathematical Sciences", "room": "5203", "capacity": 30, "type": "Classroom"},
+        {"building": "Mathematical Sciences", "room": "5217", "capacity": 28, "type": "Classroom"},
+        {"building": "Mathematical Sciences", "room": "5225", "capacity": 29, "type": "Classroom"},
+        {"building": "Mathematical Sciences", "room": "5233", "capacity": 30, "type": "Classroom"},
+        {"building": "Mathematical Sciences", "room": "6201", "capacity": 28, "type": "Seminar Room"},
+        {"building": "Mathematical Sciences", "room": "6229", "capacity": 51, "type": "Classroom"},
+        {"building": "Mathematical Sciences", "room": "7608", "capacity": 22, "type": "Classroom"},
+        {"building": "Moore Hall", "room": "100", "capacity": 442, "type": "Auditorium"},
+        {"building": "Moore Hall", "room": "1003", "capacity": 25, "type": "Seminar Room"},
+        {"building": "Perloff Hall", "room": "1102", "capacity": 146, "type": "Classroom"},
+        {"building": "Physics and Astronomy Building", "room": "1425", "capacity": 188, "type": "Classroom"},
+        {"building": "Physics and Astronomy Building", "room": "1434A", "capacity": 95, "type": "Classroom"},
+        {"building": "Physics and Astronomy Building", "room": "1749", "capacity": 40, "type": "Classroom"},
+        {"building": "Physics and Astronomy Building", "room": "2434", "capacity": 48, "type": "Classroom"},
+        {"building": "Physics and Astronomy Building", "room": "2748", "capacity": 43, "type": "Classroom"},
+        {"building": "Public Affairs Building", "room": "1222", "capacity": 93, "type": "Classroom"},
+        {"building": "Public Affairs Building", "room": "1234", "capacity": 93, "type": "Classroom"},
+        {"building": "Public Affairs Building", "room": "1246", "capacity": 93, "type": "Classroom"},
+        {"building": "Public Affairs Building", "room": "1256", "capacity": 32, "type": "Seminar Room"},
+        {"building": "Public Affairs Building", "room": "1264", "capacity": 28, "type": "Seminar Room"},
+        {"building": "Public Affairs Building", "room": "1270", "capacity": 28, "type": "Seminar Room"},
+        {"building": "Public Affairs Building", "room": "1278", "capacity": 28, "type": "Seminar Room"},
+        {"building": "Public Affairs Building", "room": "1284", "capacity": 32, "type": "Seminar Room"},
+        {"building": "Public Affairs Building", "room": "1323", "capacity": 28, "type": "Seminar Room"},
+        {"building": "Public Affairs Building", "room": "1329", "capacity": 32, "type": "Seminar Room"},
+        {"building": "Public Affairs Building", "room": "1337", "capacity": 46, "type": "Classroom"},
+        {"building": "Public Affairs Building", "room": "1343", "capacity": 32, "type": "Seminar Room"},
+        {"building": "Public Affairs Building", "room": "2214", "capacity": 85, "type": "Classroom"},
+        {"building": "Public Affairs Building", "room": "2232", "capacity": 57, "type": "Classroom"},
+        {"building": "Public Affairs Building", "room": "2238", "capacity": 46, "type": "Classroom"},
+        {"building": "Public Affairs Building", "room": "2242", "capacity": 50, "type": "Classroom"},
+        {"building": "Public Affairs Building", "room": "2250", "capacity": 60, "type": "Classroom"},
+        {"building": "Public Affairs Building", "room": "2270", "capacity": 73, "type": "Classroom"},
+        {"building": "Public Affairs Building", "room": "2278", "capacity": 28, "type": "Seminar Room"},
+        {"building": "Public Affairs Building", "room": "2284", "capacity": 28, "type": "Seminar Room"},
+        {"building": "Public Affairs Building", "room": "2292", "capacity": 16, "type": "Seminar Room"},
+        {"building": "Public Affairs Building", "room": "2317", "capacity": 28, "type": "Seminar Room"},
+        {"building": "Public Affairs Building", "room": "2319", "capacity": 28, "type": "Seminar Room"},
+        {"building": "Public Affairs Building", "room": "2325", "capacity": 28, "type": "Seminar Room"},
+        {"building": "Public Affairs Building", "room": "2333", "capacity": 28, "type": "Seminar Room"},
+        {"building": "Rolfe Hall", "room": "1200", "capacity": 292, "type": "Auditorium"},
+        {"building": "Rolfe Hall", "room": "3105", "capacity": 35, "type": "Classroom"},
+        {"building": "Rolfe Hall", "room": "3108", "capacity": 36, "type": "Seminar Room"},
+        {"building": "Rolfe Hall", "room": "3115", "capacity": 16, "type": "Seminar Room"},
+        {"building": "Rolfe Hall", "room": "3116", "capacity": 36, "type": "Seminar Room"},
+        {"building": "Rolfe Hall", "room": "3120", "capacity": 16, "type": "Seminar Room"},
+        {"building": "Rolfe Hall", "room": "3121", "capacity": 36, "type": "Seminar Room"},
+        {"building": "Rolfe Hall", "room": "3126", "capacity": 52, "type": "Classroom"},
+        {"building": "Rolfe Hall", "room": "3129", "capacity": 36, "type": "Seminar Room"},
+        {"building": "Rolfe Hall", "room": "3134", "capacity": 48, "type": "Classroom"},
+        {"building": "Rolfe Hall", "room": "3135", "capacity": 45, "type": "Classroom"},
+        {"building": "Royce Hall", "room": "148", "capacity": 24, "type": "Classroom"},
+        {"building": "Royce Hall", "room": "150", "capacity": 37, "type": "Classroom"},
+        {"building": "Royce Hall", "room": "152", "capacity": 30, "type": "Seminar Room"},
+        {"building": "Royce Hall", "room": "154", "capacity": 50, "type": "Classroom"},
+        {"building": "Royce Hall", "room": "156", "capacity": 52, "type": "Classroom"},
+        {"building": "Royce Hall", "room": "160", "capacity": 43, "type": "Classroom"},
+        {"building": "Royce Hall", "room": "162", "capacity": 45, "type": "Classroom"},
+        {"building": "Royce Hall", "room": "164", "capacity": 50, "type": "Classroom"},
+        {"building": "Royce Hall", "room": "166", "capacity": 20, "type": "Seminar Room"},
+        {"building": "Royce Hall", "room": "190", "capacity": 122, "type": "Classroom"},
+        {"building": "Royce Hall", "room": "362", "capacity": 133, "type": "Classroom"},
+        {"building": "Slichter", "room": "2834", "capacity": 20, "type": "Seminar Room"},
+        {"building": "Young Hall", "room": "1044", "capacity": 47, "type": "Classroom"},
+        {"building": "Young Hall", "room": "2200", "capacity": 98, "type": "Classroom"},
+        {"building": "Young Hall", "room": "4216", "capacity": 62, "type": "Classroom"},
+        {"building": "Young Hall", "room": "CS24", "capacity": 254, "type": "Auditorium"},
+        {"building": "Young Hall", "room": "CS50", "capacity": 351, "type": "Auditorium"},
+        {"building": "Young Hall", "room": "CS76", "capacity": 256, "type": "Auditorium"}
+    ]
     print(f"Generating URLs for {len(classroom_options)} classrooms...")
     
     # Generate URLs for the classrooms
-    filled_classrooms = generate_urls(classroom_options)
+    filled_classrooms = generate_urls(classroom_options, offered_rooms_25F, building_name_map)
     
     # Save to JSON
     print("Saving to classrooms.json...")
